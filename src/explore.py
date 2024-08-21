@@ -55,14 +55,13 @@ def _explore_plot_int(
         if aspect is None:
             aspect = 3.0
 
-        g = sns.catplot(
+        sns.catplot(
             x=col,
             data=df,
             aspect=aspect,
             kind='count',
             hue=target,
             order=range(min_val, max_val))
-        g.set_ylabels(f'{col} vs {target}')
     return None
 
 
@@ -81,6 +80,8 @@ def _explore_plot_float(
 
     sns.displot(data=plotting_data, x=col, hue=target, kind="kde")
     plt.title(f"{col} vs. {target}")
+    plt.show()
+    plt.clf()
     return None
 
 
@@ -124,6 +125,13 @@ def explore_single_plot(
     height: float | None,
     aspect: float | None
 ) -> None:
+    if min_val is not None:
+        if not isinstance(min_val, int) and not isinstance(min_val, float):
+            raise TypeError(f"Min value needs to be numeric: {min_val}")
+    if max_val is not None:
+        if not isinstance(max_val, int) and not isinstance(max_val, float):
+            raise TypeError(f"Max value needs to be numeric: {max_val}")
+
     if df[col].dtype == 'category':
         _explore_plot_category(
             df=df,
@@ -164,6 +172,7 @@ def explore_cat_cat_plot(
             height=height,
             aspect=aspect
         )
+    return None
 
 
 def explore_cat_num_plot(
@@ -195,6 +204,7 @@ def explore_cat_num_plot(
             height=height,
             aspect=aspect
         )
+    return None
 
 
 def explore_num_num_plot(
@@ -225,26 +235,44 @@ def explore_num_num_plot(
         if max_val[1] is not None:
             plotting_data = plotting_data[plotting_data[y] <= max_val[1]]
 
-    sns.scatterplot(
+    sns.jointplot(
         data=plotting_data,
         x=x,
         y=y,
-        hue=target,
-        size=target
+        hue=target
     )
+    plt.show()
+    plt.clf()
+    return None
 
 
 def explore_multi_plot(
     df: pd.DataFrame,
     cols: str,
     target: str,
-    min_val: float | None,
-    max_val: float | None,
+    min_val: List[float | None] | None,
+    max_val: List[float | None] | None,
     height: float | None,
-    aspect: float | None
+    aspect: float | None,
+    include_single_feature_plots: bool
 ) -> None:
     col1_type = df[cols[0]].dtype.name[:3]
     col2_type = df[cols[1]].dtype.name[:3]
+
+    if include_single_feature_plots:
+        if col1_type == 'cat' or col2_type == 'cat':
+            for index, col in enumerate(cols):
+                min = None if min_val is None else min_val[index]
+                max = None if max_val is None else max_val[index]
+                explore_single_plot(
+                    df=df,
+                    col=col,
+                    target=target,
+                    min_val=min,
+                    max_val=max,
+                    height=None,
+                    aspect=None
+                )
 
     if col1_type == 'cat' and col2_type == 'cat':
         explore_cat_cat_plot(
@@ -297,10 +325,11 @@ def explore_plot(
     df: pd.DataFrame,
     cols: str | List[str],
     target: str,
-    min_val: float | None = None,
-    max_val: float | None = None,
+    min_val: List[float | None] | float | None = None,
+    max_val: List[float | None] | float | None = None,
     height: float | None = None,
-    aspect: float | None = None
+    aspect: float | None = None,
+    include_single_feature_plots: bool = True
 ) -> None:
     if isinstance(cols, list):
         n_cols = len(cols)
@@ -324,7 +353,8 @@ def explore_plot(
                 min_val=min_val,
                 max_val=max_val,
                 height=height,
-                aspect=aspect
+                aspect=aspect,
+                include_single_feature_plots=include_single_feature_plots
             )
         else:
             raise IndexError("Max 2 columns can be passed")
