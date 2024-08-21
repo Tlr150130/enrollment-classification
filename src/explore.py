@@ -43,8 +43,8 @@ def _explore_plot_int(
     df: pd.DataFrame,
     col: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
+    min_val: float | None,
+    max_val: float | None,
     aspect: float | None
 ) -> None:
     with sns.axes_style('white'):
@@ -70,8 +70,8 @@ def _explore_plot_float(
     df: pd.DataFrame,
     col: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None
+    min_val: float | None,
+    max_val: float | None
 ) -> None:
     plotting_data = df.copy()
     if min_val is not None:
@@ -88,8 +88,8 @@ def _explore_plot_numeric(
     df: pd.DataFrame,
     col: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
+    min_val: float | None,
+    max_val: float | None,
     aspect: float | None
 ) -> None:
     type = str(df[col].dtype)
@@ -119,8 +119,8 @@ def explore_single_plot(
     df: pd.DataFrame,
     col: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
+    min_val: float | None,
+    max_val: float | None,
     height: float | None,
     aspect: float | None
 ) -> None:
@@ -146,49 +146,100 @@ def explore_single_plot(
 
 def explore_cat_cat_plot(
     df: pd.DataFrame,
-    col_x: str,
-    col_y: str,
+    x: str,
+    grouping: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
     height: float | None,
     aspect: float | None
 ) -> None:
-    raise NotImplementedError()
+    with sns.axes_style('white'):
+        n = calculate_plot_columns(df, grouping)
+        sns.catplot(
+            x=x,
+            hue=target,
+            col=grouping,
+            data=df,
+            kind="count",
+            col_wrap=n,
+            height=height,
+            aspect=aspect
+        )
 
 
 def explore_cat_num_plot(
     df: pd.DataFrame,
-    col_x: str,
-    col_y: str,
+    y: str,
+    grouping: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
+    min_val: float | None,
+    max_val: float | None,
     height: float | None,
     aspect: float | None
 ) -> None:
-    raise NotImplementedError()
+    plotting_data = df.copy()
+    if min_val is not None:
+        plotting_data = plotting_data[plotting_data[y] >= min_val]
+    if max_val is not None:
+        plotting_data = plotting_data[plotting_data[y] <= max_val]
+
+    with sns.axes_style('white'):
+        n = calculate_plot_columns(plotting_data, grouping)
+        sns.catplot(
+            x=target,
+            y=y,
+            col=grouping,
+            hue=target,
+            data=plotting_data,
+            kind="box",
+            col_wrap=n,
+            height=height,
+            aspect=aspect
+        )
 
 
 def explore_num_num_plot(
     df: pd.DataFrame,
-    col_x: str,
-    col_y: str,
+    x: str,
+    y: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
-    height: float | None,
-    aspect: float | None
+    min_val: List[float | None] | None,
+    max_val: List[float | None] | None
 ) -> None:
-    raise NotImplementedError()
+    plotting_data = df.copy()
+    if min_val is not None:
+        if not isinstance(min_val, list):
+            raise TypeError("Min values needs to be a list")
+        if len(min_val) != 2:
+            raise IndexError("Min values requires 2 values")
+        if min_val[0] is not None:
+            plotting_data = plotting_data[plotting_data[x] >= min_val[0]]
+        if min_val[1] is not None:
+            plotting_data = plotting_data[plotting_data[y] >= min_val[1]]
+    if max_val is not None:
+        if not isinstance(max_val, list):
+            raise TypeError("Max values needs to be a list")
+        if len(max_val) != 2:
+            raise IndexError("Max values requires 2 values")
+        if max_val[0] is not None:
+            plotting_data = plotting_data[plotting_data[x] <= max_val[0]]
+        if max_val[1] is not None:
+            plotting_data = plotting_data[plotting_data[y] <= max_val[1]]
+
+    sns.scatterplot(
+        data=plotting_data,
+        x=x,
+        y=y,
+        hue=target,
+        size=target
+    )
 
 
 def explore_multi_plot(
     df: pd.DataFrame,
     cols: str,
     target: str,
-    min_val: int | None,
-    max_val: int | None,
+    min_val: float | None,
+    max_val: float | None,
     height: float | None,
     aspect: float | None
 ) -> None:
@@ -198,11 +249,9 @@ def explore_multi_plot(
     if col1_type == 'cat' and col2_type == 'cat':
         explore_cat_cat_plot(
             df=df,
-            col_x=cols[0],
-            col_y=cols[1],
+            x=cols[0],
+            grouping=cols[1],
             target=target,
-            min_val=min_val,
-            max_val=max_val,
             height=height,
             aspect=aspect
         )
@@ -210,8 +259,8 @@ def explore_multi_plot(
     elif col1_type == 'cat' and col2_type != 'cat':
         explore_cat_num_plot(
             df=df,
-            col_x=cols[0],
-            col_y=cols[1],
+            y=cols[1],
+            grouping=cols[0],
             target=target,
             min_val=min_val,
             max_val=max_val,
@@ -222,8 +271,8 @@ def explore_multi_plot(
     elif col1_type != 'cat' and col2_type == 'cat':
         explore_cat_num_plot(
             df=df,
-            col_x=cols[1],
-            col_y=cols[0],
+            y=cols[0],
+            grouping=cols[1],
             target=target,
             min_val=min_val,
             max_val=max_val,
@@ -234,13 +283,11 @@ def explore_multi_plot(
     else:
         explore_num_num_plot(
             df=df,
-            col_x=cols[0],
-            col_y=cols[1],
+            x=cols[0],
+            y=cols[1],
             target=target,
             min_val=min_val,
-            max_val=max_val,
-            height=height,
-            aspect=aspect
+            max_val=max_val
         )
 
     return None
@@ -250,8 +297,8 @@ def explore_plot(
     df: pd.DataFrame,
     cols: str | List[str],
     target: str,
-    min_val: int | None = None,
-    max_val: int | None = None,
+    min_val: float | None = None,
+    max_val: float | None = None,
     height: float | None = None,
     aspect: float | None = None
 ) -> None:
@@ -272,7 +319,7 @@ def explore_plot(
         elif n_cols == 2:
             explore_multi_plot(
                 df=df,
-                col=cols,
+                cols=cols,
                 target=target,
                 min_val=min_val,
                 max_val=max_val,
