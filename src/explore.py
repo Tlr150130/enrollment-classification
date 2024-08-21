@@ -239,7 +239,8 @@ def explore_num_num_plot(
         data=plotting_data,
         x=x,
         y=y,
-        hue=target
+        hue=target,
+        kind='kde'
     )
     plt.show()
     plt.clf()
